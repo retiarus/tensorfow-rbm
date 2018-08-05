@@ -123,9 +123,9 @@ class RBM:
 
         # Encoder visible vector x in hidden vector self.compute_hidden
         compute_hidden_aux = tf.matmul(self.x, self.w) + self.hidden_bias
-        if self.n_hidden == 'b':
+        if self.t_hidden == 'b':
             self.compute_hidden = tf.nn.sigmoid(compute_hidden_aux)
-        elif self.n_hidden == 'g':
+        elif self.t_hidden == 'g':
             self.compute_hidden = compute_hidden_aux
 
         # Decoder hidden vector using transpose of the weights
