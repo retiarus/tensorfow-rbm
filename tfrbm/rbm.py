@@ -17,9 +17,7 @@ class RBM:
                  momentum=0.95,
                  xavier_const=1.0,
                  err_function='mse',
-                 use_tqdm=False,
-                 # DEPRECATED:
-                 tqdm=None):
+                 use_tqdm=False):
         if not 0.0 <= momentum <= 1.0:
             raise ValueError('momentum should be in range [0, 1]')
 

@@ -1,7 +1,4 @@
-from .bbrbm import BBRBM
-from .gbrbm import GBRBM
-
+from .rbm import RBM
 # default RBM
-RBM = BBRBM
 
-__all__ = [RBM, BBRBM, GBRBM]
+__all__ = [RBM]
