@@ -24,6 +24,12 @@ class RBM:
         if err_function not in {'mse', 'cosine'}:
             raise ValueError('err_function should be either \'mse\' or \'cosine\'')
 
+        if t_visible not in {'b', 'g'}:
+            raise ValueError('t_visible must be either \'b\' or \'g\'')
+
+        if t_hidden not in {'b', 'g'}:
+            raise ValueError('t_visible must be either \'b\' or \'g\'')
+
         self._use_tqdm = use_tqdm
         self._tqdm = None
 
@@ -36,6 +42,8 @@ class RBM:
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.sigma = sigma
+        self.t_visible = t_visible
+        self.t_hidden = t_hidden
 
         self.x = tf.placeholder(tf.float32, [None, self.n_visible])
         self.y = tf.placeholder(tf.float32, [None, self.n_hidden])
@@ -46,9 +54,12 @@ class RBM:
         self.hidden_bias = tf.Variable(tf.zeros([self.n_hidden]),
                                        dtype=tf.float32)
 
-        self.delta_w = tf.Variable(tf.zeros([self.n_visible, self.n_hidden]), dtype=tf.float32)
-        self.delta_visible_bias = tf.Variable(tf.zeros([self.n_visible]), dtype=tf.float32)
-        self.delta_hidden_bias = tf.Variable(tf.zeros([self.n_hidden]), dtype=tf.float32)
+        self.delta_w = tf.Variable(tf.zeros([self.n_visible, self.n_hidden]),
+                                   dtype=tf.float32)
+        self.delta_visible_bias = tf.Variable(tf.zeros([self.n_visible]),
+                                              dtype=tf.float32)
+        self.delta_hidden_bias = tf.Variable(tf.zeros([self.n_hidden]),
+                                             dtype=tf.float32)
 
         self.update_weights = None
         self.update_deltas = None
@@ -57,39 +68,58 @@ class RBM:
         self.compute_visible_from_hidden = None
 
         # Generate probabilites for hidden layer giving visible layer
-        hidden_p = tf.nn.sigmoid(tf.matmul(self.x, self.w) + self.hidden_bias)
+        hidden_aux = tf.matmul(self.x, self.w) + self.hidden_bias
+        if self.t_hidden == 'b':
+            hidden_p = tf.nn.sigmoid(hidden_aux)
+            hidden_s = sample_bernoulli(hidden_p)
+        elif self.t_hidden == 'g':
+            hidden_p = hidden_aux
+            hidden_s = sample_gaussian(hidden_p, self.sigma)
 
         # Reconstruct visible layer
-        if t_visible == 'b':
-            visible_recon_p = tf.nn.sigmoid(tf.matmul(sample_bernoulli(hidden_p), tf.transpose(self.w)) + self.visible_bias)
-        if t_visible == 'g':
-            visible_recon_p = sample_gaussian(visible_recon_p, self.sigma)
+        visible_recon_aux = tf.matmul(hidden_s, tf.transpose(self.w)) \
+            + self.visible_bias
+        if self.t_visible == 'b':
+            visible_recon_p = tf.nn.sigmoid(visible_recon_aux)
+        if self.t_visible == 'g':
+            visible_recon_p = sample_gaussian(visible_recon_aux, self.sigma)
 
         # Reconstruct hidden layer
-        hidden_recon_p = tf.nn.sigmoid(tf.matmul(visible_recon_p, self.w) + self.hidden_bias)
+        hidden_recon_aux = tf.matmul(visible_recon_p, self.w) \
+            + self.hidden_bias
+        hidden_recon_p = tf.nn.sigmoid(hidden_recon_aux)
 
         # Generate weight update
         positive_grad = tf.matmul(tf.transpose(self.x), hidden_p)
-        negative_grad = tf.matmul(tf.transpose(visible_recon_p), hidden_recon_p)
+        negative_grad = tf.matmul(tf.transpose(visible_recon_p),
+                                  hidden_recon_p)
 
         def f(x_old, x_new):
             return self.momentum * x_old +\
                    self.learning_rate * x_new * (1 - self.momentum) / tf.to_float(tf.shape(x_new)[0])
 
         delta_w_new = f(self.delta_w, positive_grad - negative_grad)
-        delta_visible_bias_new = f(self.delta_visible_bias, tf.reduce_mean(self.x - visible_recon_p, 0))
-        delta_hidden_bias_new = f(self.delta_hidden_bias, tf.reduce_mean(hidden_p - hidden_recon_p, 0))
+        delta_visible_bias_new = f(self.delta_visible_bias,
+                                   tf.reduce_mean(self.x - visible_recon_p, 0))
+        delta_hidden_bias_new = f(self.delta_hidden_bias,
+                                  tf.reduce_mean(hidden_p - hidden_recon_p, 0))
 
         update_delta_w = self.delta_w.assign(delta_w_new)
         update_delta_visible_bias = self.delta_visible_bias.assign(delta_visible_bias_new)
         update_delta_hidden_bias = self.delta_hidden_bias.assign(delta_hidden_bias_new)
 
         update_w = self.w.assign(self.w + delta_w_new)
-        update_visible_bias = self.visible_bias.assign(self.visible_bias + delta_visible_bias_new)
-        update_hidden_bias = self.hidden_bias.assign(self.hidden_bias + delta_hidden_bias_new)
+        update_visible_bias = self.visible_bias.assign(self.visible_bias
+                                                       + delta_visible_bias_new)
+        update_hidden_bias = self.hidden_bias.assign(self.hidden_bias
+                                                     + delta_hidden_bias_new)
 
-        self.update_deltas = [update_delta_w, update_delta_visible_bias, update_delta_hidden_bias]
-        self.update_weights = [update_w, update_visible_bias, update_hidden_bias]
+        self.update_deltas = [update_delta_w,
+                              update_delta_visible_bias,
+                              update_delta_hidden_bias]
+        self.update_weights = [update_w,
+                               update_visible_bias,
+                               update_hidden_bias]
 
         self.compute_hidden = tf.nn.sigmoid(tf.matmul(self.x, self.w) + self.hidden_bias)
         if(t_visible == 'b'):
@@ -146,7 +176,8 @@ class RBM:
         n_data = data_x.shape[0]
 
         if batch_size > 0:
-            n_batches = n_data // batch_size + (0 if n_data % batch_size == 0 else 1)
+            n_batches = n_data // batch_size \
+                + (0 if n_data % batch_size == 0 else 1)
         else:
             n_batches = 1
 
