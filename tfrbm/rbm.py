@@ -121,13 +121,28 @@ class RBM:
                                update_visible_bias,
                                update_hidden_bias]
 
-        self.compute_hidden = tf.nn.sigmoid(tf.matmul(self.x, self.w) + self.hidden_bias)
-        if(t_visible == 'b'):
-            self.compute_visible = tf.nn.sigmoid(tf.matmul(self.compute_hidden, tf.transpose(self.w)) + self.visible_bias)
-            self.compute_visible_from_hidden = tf.nn.sigmoid(tf.matmul(self.y, tf.transpose(self.w)) + self.visible_bias)
-        elif(t_visible == 'g'):
-            self.compute_visible = tf.matmul(self.compute_hidden, tf.transpose(self.w)) + self.visible_bias
-            self.compute_visible_from_hidden = tf.matmul(self.y, tf.transpose(self.w)) + self.visible_bias
+        # Encoder visible vector x in hidden vector self.compute_hidden
+        compute_hidden_aux = tf.matmul(self.x, self.w) + self.hidden_bias
+        if self.n_hidden == 'b':
+            self.compute_hidden = tf.nn.sigmoid(compute_hidden_aux)
+        elif self.n_hidden == 'g':
+            self.compute_hidden = compute_hidden_aux
+
+        # Decoder hidden vector using transpose of the weights
+        compute_vis_aux = tf.matmul(self.compute_hidden,
+                                    tf.transpose(self.w)) \
+            + self.visible_bias
+        compute_visible_from_hidden_aux = tf.matmul(self.y,
+                                                    tf.transpose(self.w)) \
+            + self.visible_bias
+
+        if self.t_visible == 'b':
+            self.compute_visible = tf.nn.sigmoid(compute_vis_aux)
+            self.compute_visible_from_hidden = \
+                tf.nn.sigmoid(compute_visible_from_hidden_aux)
+        elif self.t_visible == 'g':
+            self.compute_visible = compute_vis_aux
+            self.compute_visible_from_hidden = compute_visible_from_hidden_aux
 
         assert self.update_weights is not None
         assert self.update_deltas is not None
