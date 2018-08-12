@@ -87,7 +87,10 @@ class RBM:
         # Reconstruct hidden layer
         hidden_recon_aux = tf.matmul(visible_recon_p, self.w) \
             + self.hidden_bias
-        hidden_recon_p = tf.nn.sigmoid(hidden_recon_aux)
+        if self.t_hidden == 'b':
+            hidden_recon_p = tf.nn.sigmoid(hidden_recon_aux)
+        elif self.t_hidden == 'g':
+            hidden_recon_p = hidden_recon_aux
 
         # Generate weight update
         positive_grad = tf.matmul(tf.transpose(self.x), hidden_p)
@@ -135,7 +138,6 @@ class RBM:
         compute_visible_from_hidden_aux = tf.matmul(self.y,
                                                     tf.transpose(self.w)) \
             + self.visible_bias
-
         if self.t_visible == 'b':
             self.compute_visible = tf.nn.sigmoid(compute_vis_aux)
             self.compute_visible_from_hidden = \
