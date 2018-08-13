@@ -13,6 +13,7 @@ class RBM:
                  t_visible='b',
                  t_hidden='b',
                  sigma=1.0,
+                 weightcost=0.0002,
                  learning_rate=0.01,
                  momentum=0.95,
                  xavier_const=1.0,
@@ -42,6 +43,7 @@ class RBM:
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.sigma = sigma
+        self.weightcost = weightcost
         self.t_visible = t_visible
         self.t_hidden = t_hidden
 
@@ -99,7 +101,7 @@ class RBM:
 
         def f(x_old, x_new):
             return self.momentum * x_old +\
-                   self.learning_rate * x_new * (1 - self.momentum) / tf.to_float(tf.shape(x_new)[0])
+                   self.learning_rate * x_new * (1 - self.momentum) / tf.to_float(tf.shape(x_new)[0]) - self.weightcost*self.learning_rate*x_old
 
         delta_w_new = f(self.delta_w, positive_grad - negative_grad)
         delta_visible_bias_new = f(self.delta_visible_bias,
