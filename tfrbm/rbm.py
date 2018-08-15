@@ -83,6 +83,7 @@ class RBM:
             + self.visible_bias
         if self.t_visible == 'b':
             visible_recon_p = tf.nn.sigmoid(visible_recon_aux)
+            visible_recon_s = sample_bernoulli(visible_recon_p)
         if self.t_visible == 'g':
             visible_recon_p = sample_gaussian(visible_recon_aux, self.sigma)
 
